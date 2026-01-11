@@ -1,36 +1,356 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitHub Repository Search
 
 ## Getting Started
 
-First, run the development server:
+最初にセットアップスクリプトを実行してください：
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+sh setup.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+その後、開発サーバーを起動します：
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+[http://localhost:3000](http://localhost:3000) をブラウザで開いてください。
 
-## Learn More
+### Storybook
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm storybook
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+[http://localhost:6006](http://localhost:6006) でコンポーネントカタログを確認できます。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 想定ユーザーと利用シナリオ
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+このアプリケーションは、以下のようなユーザーと利用シーンを想定して設計しました。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**想定ユーザー:**
+
+- GitHub リポジトリを探している開発者
+- 技術調査やライブラリ選定を行う際に、関連リポジトリを素早く検索したい人
+
+**利用シナリオ:**
+
+1. キーワードを入力してリポジトリを検索する
+2. 検索結果の一覧からリポジトリの概要（スター数、言語など）を確認する
+3. 気になるリポジトリの URL をブックマークしたり、チームに共有する
+
+**この想定から導いた設計判断:**
+
+- 検索クエリは URL パラメータに反映 → ブックマーク・共有が可能
+- Server Components でデータ取得 → 初期表示が速く、SEO にも有利
+- シンプルな読み取り専用 UI → 複雑な状態管理ライブラリは不要
+- PC 利用を主として設計 → 開発者がリポジトリを探すのは主に PC 作業中
+
+**レスポンシブ対応について:**
+
+想定ユーザーである開発者は、リポジトリ検索を行う際ほぼ PC で作業していると考えられます。
+そのため、モバイル専用のレイアウトやブレークポイント調整は行わず、PC 優先で設計しています。
+
+ただし、以下の最低限のモバイル対応は行っています：
+
+- 横スクロールが発生しないレイアウト
+- 可読性を損なわない文字サイズ
+- タップ可能なサイズのボタン・リンク
+
+---
+
+## 設計思想
+
+このプロジェクトでは、過度な最適化よりも「責務の明確さ」「動作の再現性」「将来の変更容易性」を優先しています。
+
+唯一の「正解」アーキテクチャを前提とせず、上記の想定ユーザー・利用シナリオに基づいて判断を行いました。
+
+### ディレクトリ構成
+
+```
+src/
+├── app/                      # Next.js App Router
+│   ├── page.tsx              # トップページ（検索）
+│   ├── [owner]/[repo]/       # リポジトリ詳細ページ
+│   └── api/                  # BFF層
+│       ├── [[...route]]/     # Honoルーター
+│       │   └── repositories/ # リポジトリAPI
+│       └── fetchers/         # BFFクライアント（型安全なfetch）
+├── components/
+│   ├── primitives/           # shadcn/ui, Radix UI (生の構成要素)
+│   ├── ui/                   # 再利用可能なUI (Atomic Design)
+│   │   ├── atoms/
+│   │   ├── molecules/
+│   │   └── organisms/
+│   └── utils/                # UIユーティリティ (cn, etc.)
+└── lib/
+    └── github/               # GitHub API クライアント
+```
+
+#### なぜ Atomic Design を採用したか？
+
+UI コンポーネントを**再利用の粒度**で分類することで、以下のメリットがあります：
+
+- **配置場所の判断基準が明確**
+  「このコンポーネントはどこに置く？」という判断が、粒度（atom/molecule/organism）で一意に決まる。
+  機能が増えても判断基準がブレない。
+
+- **共通化の基準が最初から整理されている**
+  再利用可能なものは自然と atoms/molecules に集約され、
+  `common/`や`shared/`のような曖昧なディレクトリが肥大化しない。
+
+- **Storybook との親和性が高い**
+  粒度ごとにカタログ化できるため、UI の一覧性が良い。
+  デザイナーとの共有やレビューもしやすい。
+
+- **将来的なパッケージ化が容易**
+  `atoms/`、`molecules/`はプロダクト固有のロジックを持たないため、
+  UI ライブラリとして切り出し、複数プロダクト間で共通のデザインシステムとして配布できる。
+
+- **UI ライブラリの差し替えが容易**
+  primitives 層に外部ライブラリ（shadcn/ui, Radix UI）を閉じ込めているため、
+  将来的に別のライブラリに乗り換える場合も、影響範囲を primitives 内に限定できる。
+
+#### 各層の役割
+
+- `primitives/`
+  shadcn/ui と Radix UI が提供する、低レベルで主張の少ない構成要素。
+  これらは外部ライブラリとして扱い、直接カスタマイズしません。
+
+- `ui/atoms`
+  - UI を構成する最小単位のパーツ
+  - 自分が何に使われるかは知らない
+  - UI としての姿があるなしは関係ない（container や provider 的なものもここ）
+
+- `ui/molecules`
+  - いくつかの atom（または molecule）を組み合わせて構成される
+  - Web UI の知識や機能を持つが、特定のプロダクトについての知識を持たない
+    - 自分は何ができるのかは知っている（表示しているもの、ボタンを押した時の挙動など）
+    - 自分が何に使われているのかは知らない
+  - いくらかの複雑性は持つが、これ単体では成立しない
+  - **ここまでは共通パーツとして使いまわせる**
+
+- `ui/organisms`
+  - 特定のプロダクトについての知識を持つ
+  - **他のプロダクトでは利用できない**（プロダクト間で使いまわせないもの）
+  - それ単体で Web サイト内で存在できる
+  - 何をするものかが一目でわかる（プロダクト的な意味で）
+
+この構成では、atoms/molecules は汎用的に再利用でき、organisms でプロダクト固有の文脈を与える、という運用をしています。
+
+#### "use client" の配置方針
+
+organisms に直接 "use client" をつけるシンプルな方式を採用しています。
+
+**採用理由：**
+
+- 今回はアプリ内で完結し、パッケージ化の予定がない
+- YAGNI（You Aren't Gonna Need It）の原則に従い、過剰な抽象化を避ける
+- RepositoryList のようなインタラクティブなコンポーネントは、元々クライアントサイドの状態管理が前提
+
+**将来パッケージ化する場合：**
+
+adapter パターンに分離することで対応可能です。
+organisms は純粋な UI として保ち、adapter は page と同じ階層に配置します。
+
+```
+# organisms はパッケージ化可能な純粋UI
+components/ui/organisms/RepositoryList/
+├── index.tsx           # 純粋なUI（Server Component対応）
+└── index.stories.tsx
+
+# adapter は page と同じ階層に配置
+app/
+└── repositories/
+    ├── page.tsx
+    └── index.adapter.tsx   # "use client" + hooks + API呼び出し
+```
+
+必要になったタイミングで分離すれば良いという判断です。
+
+---
+
+### 技術スタック
+
+- **Next.js (App Router)**
+  Server Components を活用したサーバーサイドデータ取得と、
+  サーバー/クライアント責務の明確な分離のために採用。
+
+- **TypeScript**
+  明示的なデータモデリングと、API 境界の把握を容易にするため。
+
+- **Hono**
+  BFF 層の API ルーティングに採用。選定理由は以下の通り：
+  - 軽量で高速（Next.js Route Handlers との相性が良い）
+  - 型安全なルーティングとバリデーション
+  - `hc`（Hono Client）による型付き API クライアントの自動生成
+  - Express ライクな書き心地で学習コストが低い
+
+- **shadcn/ui + Radix UI**
+  アクセシビリティとインタラクションパターンを再発明せず、
+  スタイリングとコンポジションをアプリケーション側で制御するために採用。
+
+- **Storybook**
+  UI コンポーネントを分離して開発・確認するためのカタログ。
+  各コンポーネントの状態やバリエーションを視覚的に確認でき、
+  デザインとの整合性やアクセシビリティのチェックに活用。
+
+- **Vitest**
+  高速なユニットテストフレームワーク。
+  Vite ベースで HMR に対応し、開発体験が良い。
+
+- **Zod**
+  TypeScript ファーストのスキーマバリデーション。
+  API レスポンスの型安全性を保証するために使用。
+
+---
+
+### 状態管理
+
+このアプリケーションでは、状態管理を意図的に最小限に保っています。
+
+- サーバーサイドデータ（検索結果）は Server Components で処理。
+- クライアントサイド状態は、UI 関連の関心事に限定
+  （例: 入力値、ローカルなインタラクション）。
+
+今回の課題では、楽観的更新や複雑なクライアントサイド同期が不要なため、
+TanStack Query などのグローバルなクライアントサイドキャッシュライブラリは導入していません。
+
+UX が必要とすれば、後から導入できる構成になっています。
+
+---
+
+### API 設計
+
+GitHub Search API はサーバーサイドからアクセスします。
+
+- 検索はリアルタイムなインタラクションではなく、**確定アクション**として扱う。
+- クエリパラメータを URL に反映し、再現性と共有可能性を確保。
+- サーバーサイド fetch により、API の詳細をクライアントに露出せず、
+  クライアントバンドルを最小限に保つ。
+
+このアプローチは、積極的なインタラクティブ性よりも明確さと決定性を重視しており、
+このアプリケーションのスコープに適しています。
+
+#### レート制限への対応
+
+GitHub API は認証なしで 60 requests/hour/IP の制限があります。
+
+本アプリケーションはユーザー向けサービスのため、認証トークンは使用せず、
+各ユーザーの IP ベースでレート制限が適用されます。
+
+レート制限に達した場合は、ユーザーに分かりやすいエラーメッセージを表示します。
+
+#### BFF（Backend for Frontend）パターン
+
+UI が GitHub API の構造に直接依存しないよう、
+Next.js の Route Handlers（`app/api/`）を軽量な BFF として利用しています。
+
+```
+GitHub API → lib/github → BFF (Route Handlers) → fetchers → Page (UI)
+                            ↑ ここで変換
+```
+
+UI はアプリケーション固有のデータ構造のみを扱います。
+GitHub API の仕様変更があっても、BFF 層の修正だけで済みます。
+
+**BFF 層の責務：**
+
+- 外部 API（GitHub）のレスポンスを UI 向けのデータ構造に変換
+- snake_case → camelCase の変換
+- 必要なフィールドのみを抽出・整形
+- エラーハンドリングの統一
+
+**BFF ディレクトリ構成：**
+
+```
+src/app/api/[[...route]]/
+├── route.ts              # エントリーポイント（Hono を Next.js に接続）
+├── index.ts              # Hono アプリ定義（ルートの集約）
+├── errors/               # エラーハンドリング
+│   └── errorHandler/
+└── repositories/         # ドメイン別ルート
+    ├── index.ts          # repositories ルートの集約
+    ├── list/
+    │   └── index.ts      # GET /api/repositories
+    └── get/
+        └── index.ts      # GET /api/repositories/:owner/:repo
+```
+
+**fetchers（BFF クライアント）：**
+
+Page から BFF を呼び出すための型安全なクライアント層。
+Hono Client を使用し、BFF の型定義から自動的に型付きクライアントを生成します。
+
+```
+src/app/api/fetchers/
+├── bffClient/
+│   └── index.ts          # Hono Client インスタンス
+└── repositories/
+    ├── searchRepositories/
+    │   └── index.ts      # 検索API呼び出し + Zodバリデーション
+    └── getRepository/
+        └── index.ts      # 詳細API呼び出し + Zodバリデーション
+```
+
+**外部 API クライアント：**
+
+```
+src/lib/github/
+├── searchRepositories/
+│   └── index.ts          # GitHub Search API
+└── getRepository/
+    └── index.ts          # GitHub Repos API
+```
+
+BFF、fetchers、外部 API クライアントを分離することで、
+各層の責務が明確になり、テストも容易になります。
+
+---
+
+### テスト戦略
+
+今回のコーディング課題のスコープを考慮し、
+コアな UI 動作とレンダリングロジックの正しさを確認することに焦点を当てています。
+
+- UI コンポーネントは分離してテスト可能なように設計。
+- ビジネスロジックは可能な限りプレゼンテーションの外に置く。
+
+**テスト構成：**
+
+- BFF テスト（`src/app/api/[[...route]]/**/*.test.ts`）
+  - エンドポイントの入出力を検証
+- fetcher テスト（`src/app/api/fetchers/**/*.test.ts`）
+  - BFF クライアントの動作を検証
+- Page テスト（`src/app/**/*.test.tsx`）
+  - ページコンポーネントのレンダリングを検証
+
+```bash
+pnpm test           # unit + react テスト
+pnpm test:storybook # Storybook インタラクションテスト
+```
+
+要件の拡大に応じて、テストカバレッジを拡張できる構成になっています
+（例: インテグレーションテスト、E2E テスト）。
+
+---
+
+## AI の利用について
+
+本プロジェクトでは Claude Code（Claude Opus 4.5）を活用して開発を行いました。
+
+**利用した場面：**
+
+- 設計相談（ディレクトリ構成、BFF パターン、状態管理方針）
+- コンポーネント・API・テストコードの実装
+- README と実装の整合性チェック
+- ドキュメント作成（README の設計思想セクション）
+- コミット戦略の相談
+
+**活用方針：**
+
+- AI の提案をそのまま採用せず、設計判断は対話を通じて決定
+- 実装後にレビューを依頼し、改善点を反映
+- README の更新も AI に任せつつ、内容は都度確認
