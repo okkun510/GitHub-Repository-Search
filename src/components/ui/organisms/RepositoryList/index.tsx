@@ -18,6 +18,35 @@ export type Repository = {
   htmlUrl: string;
 };
 
+const RepositoryItem = ({ repository }: { repository: Repository }) => (
+  <Item asChild>
+    <a href={`/${repository.fullName}`}>
+      <Avatar
+        src={repository.ownerAvatarUrl}
+        alt={repository.fullName}
+        className="w-10 h-10"
+      />
+      <ItemContent>
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium truncate">{repository.fullName}</h3>
+          <div className="flex items-center gap-1 text-sm shrink-0 ml-4">
+            <StarIcon className="size-4 fill-yellow-400 stroke-yellow-400" aria-hidden="true" />
+            <span aria-label={`スター数 ${repository.stargazersCount}`}>
+              {repository.stargazersCount}
+            </span>
+          </div>
+        </div>
+        {repository.description && (
+          <p className="text-muted-foreground text-sm line-clamp-2">
+            {repository.description}
+          </p>
+        )}
+      </ItemContent>
+      <ChevronRightIcon className="size-4" />
+    </a>
+  </Item>
+);
+
 const sortOptions = [
   { value: "best-match", label: "デフォルト順" },
   { value: "stars", label: "スター数順" },
@@ -80,31 +109,8 @@ export const RepositoryList = ({
           </div>
         ) : (
           repositories.map((repo) => (
-          <Item key={repo.id} asChild>
-            <a href={`/${repo.fullName}`}>
-              <Avatar
-                src={repo.ownerAvatarUrl}
-                alt={repo.fullName}
-                className="w-10 h-10"
-              />
-              <ItemContent>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium truncate">{repo.fullName}</h3>
-                  <div className="flex items-center gap-1 text-sm shrink-0 ml-4">
-                    <StarIcon className="size-4 fill-yellow-400 stroke-yellow-400" />
-                    <span>{repo.stargazersCount}</span>
-                  </div>
-                </div>
-                {repo.description && (
-                  <p className="text-muted-foreground text-sm line-clamp-2">
-                    {repo.description}
-                  </p>
-                )}
-              </ItemContent>
-              <ChevronRightIcon className="size-4" />
-            </a>
-          </Item>
-        ))
+            <RepositoryItem key={repo.id} repository={repo} />
+          ))
         )}
       </div>
 
