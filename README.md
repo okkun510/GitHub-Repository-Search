@@ -284,6 +284,8 @@ src/app/api/
 │   ├── index.ts          # Hono アプリ定義（ルートの集約）
 │   └── repositories/     # ドメイン別ルート
 │       ├── index.ts      # repositories ルートの集約
+│       ├── utils/
+│       │   └── index.ts  # repositoriesの共通ユーティリティ
 │       ├── list/
 │       │   └── index.ts  # GET /api/repositories
 │       └── get/
@@ -319,7 +321,8 @@ src/lib/github/
 ```
 
 BFF、fetchers、外部 API クライアントを分離することで、
-各層の責務が明確になり、テストも容易になります。
+各層の責務が明確になります。
+外部 API の呼び出しは BFF 層のテストでまとめて検証しています。
 
 ---
 
