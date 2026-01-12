@@ -46,7 +46,9 @@ export const RepositoryList = ({
   return (
     <div className="flex flex-col gap-8">
       <form className="flex flex-col sm:flex-row sm:justify-center gap-2">
+        <label htmlFor="search" className="sr-only">検索キーワード</label>
         <Input
+          id="search"
           type="text"
           name="q"
           placeholder="キーワードを入力"
