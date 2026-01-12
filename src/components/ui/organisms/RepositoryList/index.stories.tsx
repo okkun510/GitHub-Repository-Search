@@ -73,8 +73,7 @@ export const Default: StoryObj<typeof RepositoryList> = {
     totalPage: 10,
     currentHref: "/search?q=react",
     defaultSort: "best-match",
-    onSortChange: (value) => console.log("sort:", value),
-    hasSearched: true,
+        hasSearched: true,
   },
 };
 
@@ -85,8 +84,7 @@ export const SinglePage: StoryObj<typeof RepositoryList> = {
     totalPage: 1,
     currentHref: "/search?q=react",
     defaultSort: "best-match",
-    onSortChange: (value) => console.log("sort:", value),
-    hasSearched: true,
+        hasSearched: true,
   },
 };
 
@@ -97,8 +95,7 @@ export const Empty: StoryObj<typeof RepositoryList> = {
     totalPage: 0,
     currentHref: "/search?q=nonexistent",
     defaultSort: "best-match",
-    onSortChange: (value) => console.log("sort:", value),
-    hasSearched: true,
+        hasSearched: true,
   },
 };
 
@@ -109,7 +106,6 @@ export const Initial: StoryObj<typeof RepositoryList> = {
     totalPage: 0,
     currentHref: "/search",
     defaultSort: "best-match",
-    onSortChange: (value) => console.log("sort:", value),
-    hasSearched: false,
+        hasSearched: false,
   },
 };
