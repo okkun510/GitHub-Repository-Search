@@ -48,19 +48,19 @@ export const Repository = ({ repository }: Props) => {
 
       <div className="flex flex-wrap justify-center gap-2">
         <Badge variant="secondary">
-          <StarIcon className="size-3 fill-yellow-400 stroke-yellow-400 mr-1" />
+          <StarIcon className="size-3 fill-yellow-400 stroke-yellow-400 mr-1" aria-hidden="true" />
           {repository.stargazersCount} stars
         </Badge>
         <Badge variant="secondary">
-          <EyeIcon className="size-3 mr-1" />
+          <EyeIcon className="size-3 mr-1" aria-hidden="true" />
           {repository.watchersCount} watching
         </Badge>
         <Badge variant="secondary">
-          <GitForkIcon className="size-3 mr-1" />
+          <GitForkIcon className="size-3 mr-1" aria-hidden="true" />
           {repository.forksCount} forks
         </Badge>
         <Badge variant="secondary">
-          <CircleDotIcon className="size-3 mr-1" />
+          <CircleDotIcon className="size-3 mr-1" aria-hidden="true" />
           {repository.openIssuesCount} issues
         </Badge>
         {repository.language && (
@@ -73,7 +73,7 @@ export const Repository = ({ repository }: Props) => {
         )}
         {repository.license && (
           <Badge variant="secondary">
-            <ScaleIcon className="size-3 mr-1" />
+            <ScaleIcon className="size-3 mr-1" aria-hidden="true" />
             {repository.license}
           </Badge>
         )}
@@ -81,18 +81,18 @@ export const Repository = ({ repository }: Props) => {
 
       <div className="flex flex-col gap-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
-          <CalendarIcon className="size-4" />
+          <CalendarIcon className="size-4" aria-hidden="true" />
           <span>作成日: {repository.createdAt}</span>
         </div>
         <div className="flex items-center gap-2">
-          <CalendarIcon className="size-4" />
+          <CalendarIcon className="size-4" aria-hidden="true" />
           <span>更新日: {repository.updatedAt}</span>
         </div>
       </div>
 
       <Button asChild className="w-fit">
         <a href={repository.htmlUrl} target="_blank" rel="noopener noreferrer">
-          <ExternalLinkIcon className="size-4" />
+          <ExternalLinkIcon className="size-4" aria-hidden="true" />
           GitHubで開く
         </a>
       </Button>
