@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { errorHandler } from "../errors/errorHandler";
-import repositories from "./repositories";
+import { errorHandler } from "./errors/errorHandler";
+import repositories from "./routes/repositories";
 
 export const app = new Hono()
   .basePath("/api")
