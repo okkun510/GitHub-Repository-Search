@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRepository } from "@/app/api/fetchers/repositories/getRepository";
+import { getRepository } from "@/bff/client/repositories/getRepository";
 import { Repository } from "@/components/ui/organisms/Repository";
 
 type Props = {

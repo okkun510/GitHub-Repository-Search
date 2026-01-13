@@ -106,22 +106,33 @@ pnpm storybook
 
 ```
 src/
-├── app/                      # Next.js App Router
-│   ├── page.tsx              # トップページ（検索）
-│   ├── [owner]/[repo]/       # リポジトリ詳細ページ
-│   └── api/                  # BFF層
-│       ├── [[...route]]/     # Honoルーター
-│       │   └── repositories/ # リポジトリAPI
-│       └── fetchers/         # BFFクライアント（型安全なfetch）
-├── components/
-│   ├── primitives/           # shadcn/ui, Radix UI (生の構成要素)
-│   ├── ui/                   # 再利用可能なUI (Atomic Design)
-│   │   ├── atoms/
-│   │   ├── molecules/
-│   │   └── organisms/
-│   └── utils/                # UIユーティリティ (cn, etc.)
-└── lib/
-    └── github/               # GitHub API クライアント
+├── app/                          # Next.js App Router
+│   ├── page.tsx                  # トップページ（検索）
+│   ├── [owner]/[repo]/           # リポジトリ詳細ページ
+│   └── api/
+│       ├── [[...route]]/         # BFFマウントポイント（HonoをNext.jsに接続）
+│       └── infrastructure/       # 外部サービス連携（Clean Architecture）
+│           └── github/
+│               ├── data-access/  # 生API呼び出し（snake_case）
+│               ├── repository/   # ドメインモデル変換（camelCase）
+│               └── index.ts      # 公開インターフェース
+├── bff/                          # BFF層（Hono）
+│   ├── client/                   # BFFクライアント（型安全なfetch）
+│   │   └── repositories/
+│   ├── routes/                   # BFFルート定義
+│   │   └── repositories/
+│   │       ├── get/              # GET /api/repositories/:owner/:repo
+│   │       ├── list/             # GET /api/repositories
+│   │       └── utils/            # 共通ユーティリティ
+│   ├── errors/                   # エラーハンドリング
+│   └── index.ts                  # Honoアプリ定義
+└── components/
+    ├── primitives/               # shadcn/ui, Radix UI (生の構成要素)
+    ├── ui/                       # 再利用可能なUI (Atomic Design)
+    │   ├── atoms/
+    │   ├── molecules/
+    │   └── organisms/
+    └── utils/                    # UIユーティリティ (cn, etc.)
 ```
 
 #### なぜ Atomic Design を採用したか？
@@ -258,71 +269,90 @@ GitHub API は認証なしで 60 requests/hour/IP の制限があります。
 #### BFF（Backend for Frontend）パターン
 
 UI が GitHub API の構造に直接依存しないよう、
-Next.js の Route Handlers（`app/api/`）を軽量な BFF として利用しています。
+Hono を使った BFF 層を `src/bff/` に配置し、Next.js Route Handlers 経由で公開しています。
 
 ```
-GitHub API → lib/github → BFF (Route Handlers) → fetchers → Page (UI)
-                            ↑ ここで変換
+GitHub API → infrastructure → BFF (routes) → client → Page (UI)
+               ↑ ここでドメインモデルに変換    ↑ ここでUI向けに整形
 ```
 
 UI はアプリケーション固有のデータ構造のみを扱います。
-GitHub API の仕様変更があっても、BFF 層の修正だけで済みます。
+GitHub API の仕様変更があっても、infrastructure 層の修正だけで済みます。
 
 **BFF 層の責務：**
 
-- 外部 API（GitHub）のレスポンスを UI 向けのデータ構造に変換
-- snake_case → camelCase の変換
-- 必要なフィールドのみを抽出・整形
+- infrastructure 層から取得したドメインモデルを UI 向けに整形
+- 数値のフォーマット（例: 200000 → "200k"）
+- 日付のフォーマット（例: "2024-01-01" → "2024年1月1日"）
 - エラーハンドリングの統一
 
 **BFF ディレクトリ構成：**
 
 ```
-src/app/api/
-├── [[...route]]/         # Honoルーター
-│   ├── route.ts          # エントリーポイント（Hono を Next.js に接続）
-│   ├── index.ts          # Hono アプリ定義（ルートの集約）
-│   └── repositories/     # ドメイン別ルート
+src/bff/
+├── index.ts              # Honoアプリ定義（ルートの集約）
+├── client/               # BFFクライアント（Page から呼び出す）
+│   ├── index.ts          # Hono Client インスタンス
+│   └── repositories/
+│       ├── searchRepositories/
+│       │   └── index.ts  # 検索API呼び出し + Zodバリデーション
+│       └── getRepository/
+│           └── index.ts  # 詳細API呼び出し + Zodバリデーション
+├── routes/               # BFFルート定義
+│   └── repositories/
 │       ├── index.ts      # repositories ルートの集約
 │       ├── utils/
-│       │   └── index.ts  # repositoriesの共通ユーティリティ
+│       │   └── index.ts  # 共通ユーティリティ（formatCount, formatDate）
 │       ├── list/
 │       │   └── index.ts  # GET /api/repositories
 │       └── get/
 │           └── index.ts  # GET /api/repositories/:owner/:repo
-└── errors/               # エラーハンドリング
+└── errors/
     └── errorHandler/
+        └── index.ts      # エラーハンドリング
+
+src/app/api/[[...route]]/
+└── route.ts              # BFFをNext.js Route Handlersにマウント
 ```
 
-**fetchers（BFF クライアント）：**
+**client（BFF クライアント）：**
 
 Page から BFF を呼び出すための型安全なクライアント層。
 Hono Client を使用し、BFF の型定義から自動的に型付きクライアントを生成します。
 
-```
-src/app/api/fetchers/
-├── bffClient/
-│   └── index.ts          # Hono Client インスタンス
-└── repositories/
-    ├── searchRepositories/
-    │   └── index.ts      # 検索API呼び出し + Zodバリデーション
-    └── getRepository/
-        └── index.ts      # 詳細API呼び出し + Zodバリデーション
-```
+#### Infrastructure 層（外部サービス連携）
 
-**外部 API クライアント：**
+Clean Architecture の考え方に基づき、外部 API との連携を infrastructure 層に分離しています。
 
 ```
-src/lib/github/
-├── searchRepositories/
-│   └── index.ts          # GitHub Search API
-└── getRepository/
-    └── index.ts          # GitHub Repos API
+src/app/api/infrastructure/
+└── github/
+    ├── index.ts          # 公開インターフェース（re-export）
+    ├── data-access/
+    │   └── index.ts      # GitHub API呼び出し（生データ、snake_case）
+    └── repository/
+        └── index.ts      # ドメインモデル変換（camelCase）
 ```
 
-BFF、fetchers、外部 API クライアントを分離することで、
-各層の責務が明確になります。
-外部 API の呼び出しは BFF 層のテストでまとめて検証しています。
+**各層の責務：**
+
+- **data-access**: 外部 API への HTTP 呼び出し。レスポンスはそのまま（snake_case）返す
+- **repository**: data-access から取得した生データをドメインモデル（camelCase）に変換
+- **index.ts**: repository を re-export し、公開インターフェースを提供
+
+**この分離のメリット：**
+
+- **疎結合**: BFF は infrastructure の公開インターフェースにのみ依存
+- **差し替え可能**: GitHub を GitLab に変える場合、infrastructure 内の修正だけで済む
+- **テスタビリティ**: repository をモックすることで BFF のテストが容易
+- **拡張性**: 新しい外部サービス（npm registry 等）を同じ構造で追加可能
+
+```
+src/app/api/infrastructure/
+├── github/          # 現在
+├── gitlab/          # 将来追加可能
+└── npm-registry/    # 将来追加可能
+```
 
 ---
 
@@ -336,12 +366,23 @@ BFF、fetchers、外部 API クライアントを分離することで、
 
 **テスト構成：**
 
-- BFF テスト（`src/app/api/[[...route]]/**/*.test.ts`）
+- BFF routes テスト（`src/bff/routes/**/*.test.ts`）
   - エンドポイントの入出力を検証
-- fetcher テスト（`src/app/api/fetchers/**/*.test.ts`）
+  - infrastructure 層をモックしてテスト
+- BFF client テスト（`src/bff/client/**/*.test.ts`）
   - BFF クライアントの動作を検証
 - Page テスト（`src/app/**/*.test.tsx`）
   - ページコンポーネントのレンダリングを検証
+
+**infrastructure 層のテストについて：**
+
+infrastructure 層（data-access / repository）は単体テストを書いていません。
+
+- data-access: fetch のラッパーなので、テストすると実際の API を叩くことになる
+- repository: BFF テストで間接的にカバーされている
+
+BFF テストで infrastructure をモックすることで、
+BFF → infrastructure → レスポンスの流れを検証しています。
 
 ```bash
 pnpm test           # unit + react テスト

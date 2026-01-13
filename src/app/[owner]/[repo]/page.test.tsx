@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import RepositoryPage from "./page";
 
-vi.mock("@/app/api/fetchers/repositories/getRepository", () => ({
+vi.mock("@/bff/client/repositories/getRepository", () => ({
   getRepository: vi.fn(),
 }));
 
@@ -10,7 +10,7 @@ vi.mock("@/components/ui/organisms/Repository", () => ({
   Repository: vi.fn(() => <div data-testid="repository" />),
 }));
 
-import { getRepository } from "@/app/api/fetchers/repositories/getRepository";
+import { getRepository } from "@/bff/client/repositories/getRepository";
 import { Repository } from "@/components/ui/organisms/Repository";
 
 const mockGetRepository = vi.mocked(getRepository);

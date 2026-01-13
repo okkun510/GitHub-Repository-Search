@@ -1,4 +1,4 @@
-import { searchRepositories } from "@/app/api/fetchers/repositories/searchRepositories";
+import { searchRepositories } from "@/bff/client/repositories/searchRepositories";
 import { RepositoryList } from "@/components/ui/organisms/RepositoryList";
 
 const PER_PAGE = 30;
