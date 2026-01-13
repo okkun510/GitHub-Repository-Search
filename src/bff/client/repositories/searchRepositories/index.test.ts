@@ -3,7 +3,7 @@ import { searchRepositories } from ".";
 
 const mockBffGet = vi.fn();
 
-vi.mock("../../bffClient", () => ({
+vi.mock("@/bff/client", () => ({
   bffClient: {
     api: {
       repositories: {

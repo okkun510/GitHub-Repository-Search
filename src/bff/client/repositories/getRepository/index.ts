@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { bffClient } from "../../bffClient";
-import { responseSchema } from "../../../[[...route]]/repositories/get";
+import { bffClient } from "@/bff/client";
+import { responseSchema } from "@/bff/routes/repositories/get";
 
 type RepositoryData = z.infer<typeof responseSchema>;
 

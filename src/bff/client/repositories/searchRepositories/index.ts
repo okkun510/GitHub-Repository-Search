@@ -1,12 +1,14 @@
 import { z } from "zod";
-import { bffClient } from "../../bffClient";
-import { responseSchema } from "../../../[[...route]]/repositories/list";
+import { bffClient } from "@/bff/client";
+import { responseSchema } from "@/bff/routes/repositories/list";
 
 type Options = {
   sort?: string;
   page?: string;
   perPage?: string;
 };
+
+const DEFAULT_PER_PAGE = "30";
 
 type SearchResult = z.infer<typeof responseSchema>;
 
@@ -16,14 +18,14 @@ type SearchRepositoriesResult =
 
 export const searchRepositories = async (
   query: string,
-  options?: Options
+  { sort, page, perPage = DEFAULT_PER_PAGE }: Options = {}
 ): Promise<SearchRepositoriesResult> => {
   const res = await bffClient.api.repositories.$get({
     query: {
       query,
-      perPage: options?.perPage ?? "30",
-      ...(options?.sort && { sort: options.sort }),
-      ...(options?.page && { page: options.page }),
+      perPage,
+      ...(sort && { sort }),
+      ...(page && { page }),
     },
   });
 
