@@ -114,7 +114,7 @@ src/
 │       └── infrastructure/       # 外部サービス連携（Clean Architecture）
 │           └── github/
 │               ├── data-access/  # 生API呼び出し（snake_case）
-│               ├── repository/   # ドメインモデル変換（camelCase）
+│               ├── repository/   # 型変換（camelCase）
 │               └── index.ts      # 公開インターフェース
 ├── bff/                          # BFF層（Hono）
 │   ├── client/                   # BFFクライアント（型安全なfetch）
@@ -273,7 +273,7 @@ Hono を使った BFF 層を `src/bff/` に配置し、Next.js Route Handlers �
 
 ```
 GitHub API → infrastructure → BFF (routes) → client → Page (UI)
-               ↑ ここでドメインモデルに変換    ↑ ここでUI向けに整形
+               ↑ ここで型変換（camelCase）    ↑ ここでUI向けに整形
 ```
 
 UI はアプリケーション固有のデータ構造のみを扱います。
@@ -281,7 +281,7 @@ GitHub API の仕様変更があっても、infrastructure 層の修正だけで
 
 **BFF 層の責務：**
 
-- infrastructure 層から取得したドメインモデルを UI 向けに整形
+- infrastructure 層から取得したデータを UI 向けに整形
 - 数値のフォーマット（例: 200000 → "200k"）
 - 日付のフォーマット（例: "2024-01-01" → "2024年1月1日"）
 - エラーハンドリングの統一
@@ -331,13 +331,13 @@ src/app/api/infrastructure/
     ├── data-access/
     │   └── index.ts      # GitHub API呼び出し（生データ、snake_case）
     └── repository/
-        └── index.ts      # ドメインモデル変換（camelCase）
+        └── index.ts      # 型変換（camelCase）
 ```
 
 **各層の責務：**
 
 - **data-access**: 外部 API への HTTP 呼び出し。レスポンスはそのまま（snake_case）返す
-- **repository**: data-access から取得した生データをドメインモデル（camelCase）に変換
+- **repository**: data-access から取得した生データをアプリ内型（camelCase）に変換
 - **index.ts**: repository を re-export し、公開インターフェースを提供
 
 **この分離のメリット：**
