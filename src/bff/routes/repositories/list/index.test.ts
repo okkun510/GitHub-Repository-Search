@@ -1,13 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { app } from "../../index";
+import { app } from "@/bff";
 
-vi.mock("@/lib/github/searchRepositories", () => ({
-  searchRepositories: vi.fn(),
+vi.mock("@/app/api/infrastructure/github", () => ({
+  gitHubRepository: {
+    get: vi.fn(),
+    search: vi.fn(),
+  },
 }));
 
-import { searchRepositories } from "@/lib/github/searchRepositories";
+import { gitHubRepository } from "@/app/api/infrastructure/github";
 
-const mockSearchRepositories = vi.mocked(searchRepositories);
+const mockSearchRepositories = vi.mocked(gitHubRepository.search);
 
 describe("GET /api/repositories", () => {
   beforeEach(() => {
@@ -17,23 +20,15 @@ describe("GET /api/repositories", () => {
   describe("正常系", () => {
     it("検索結果を正しい形式で返す", async () => {
       mockSearchRepositories.mockResolvedValue({
-        total_count: 100,
-        incomplete_results: false,
+        totalCount: 100,
         items: [
           {
             id: 1,
-            full_name: "facebook/react",
+            fullName: "facebook/react",
             description: "A JavaScript library",
-            owner: { avatar_url: "https://example.com/avatar.png" },
-            stargazers_count: 200000,
-            watchers_count: 200000,
-            forks_count: 40000,
-            open_issues_count: 1000,
-            language: "JavaScript",
-            license: { name: "MIT" },
-            created_at: "2013-05-24T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            html_url: "https://github.com/facebook/react",
+            owner: { avatarUrl: "https://example.com/avatar.png" },
+            stars: 200000,
+            htmlUrl: "https://github.com/facebook/react",
           },
         ],
       });
@@ -59,8 +54,7 @@ describe("GET /api/repositories", () => {
 
     it("sortパラメータを渡す", async () => {
       mockSearchRepositories.mockResolvedValue({
-        total_count: 0,
-        incomplete_results: false,
+        totalCount: 0,
         items: [],
       });
 
@@ -77,8 +71,7 @@ describe("GET /api/repositories", () => {
 
     it("pageとperPageパラメータを数値に変換して渡す", async () => {
       mockSearchRepositories.mockResolvedValue({
-        total_count: 0,
-        incomplete_results: false,
+        totalCount: 0,
         items: [],
       });
 
@@ -95,23 +88,15 @@ describe("GET /api/repositories", () => {
 
     it("stargazersCountが1000未満の場合はそのまま表示", async () => {
       mockSearchRepositories.mockResolvedValue({
-        total_count: 1,
-        incomplete_results: false,
+        totalCount: 1,
         items: [
           {
             id: 1,
-            full_name: "user/repo",
+            fullName: "user/repo",
             description: null,
-            owner: { avatar_url: "https://example.com/avatar.png" },
-            stargazers_count: 500,
-            watchers_count: 500,
-            forks_count: 10,
-            open_issues_count: 5,
-            language: null,
-            license: null,
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            html_url: "https://github.com/user/repo",
+            owner: { avatarUrl: "https://example.com/avatar.png" },
+            stars: 500,
+            htmlUrl: "https://github.com/user/repo",
           },
         ],
       });
@@ -129,6 +114,20 @@ describe("GET /api/repositories", () => {
 
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({ error: "query is required" });
+    });
+
+    it("403エラーの場合はレート制限エラーを返す", async () => {
+      mockSearchRepositories.mockRejectedValue(
+        new Error("GitHub APIのレート制限に達しました。しばらく待ってから再度お試しください。")
+      );
+
+      const res = await app.request("/api/repositories?query=react");
+
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "GitHub APIのレート制限に達しました。しばらく待ってから再度お試しください。",
+      });
     });
   });
 });

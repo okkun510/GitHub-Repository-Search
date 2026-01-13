@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { searchRepositories } from "@/lib/github/searchRepositories";
+import { gitHubRepository } from "@/app/api/infrastructure/github";
 import { formatCount } from "../utils";
 
 const repositoryItemSchema = z.object({
@@ -33,25 +33,33 @@ const app = new Hono().get("/", async (c) => {
     return c.json({ error: "query is required" }, 400);
   }
 
-  const result = await searchRepositories({
-    query,
-    sort,
-    order,
-    page: page ? Number(page) : undefined,
-    perPage: perPage ? Number(perPage) : undefined,
-  });
+  try {
+    const result = await gitHubRepository.search({
+      query,
+      sort,
+      order,
+      page: page ? Number(page) : undefined,
+      perPage: perPage ? Number(perPage) : undefined,
+    });
 
-  return c.json({
-    totalCount: result.total_count,
-    items: result.items.map((item) => ({
-      id: item.id,
-      fullName: item.full_name,
-      description: item.description,
-      ownerAvatarUrl: item.owner.avatar_url,
-      stargazersCount: formatCount(item.stargazers_count),
-      htmlUrl: item.html_url,
-    })),
-  });
+    return c.json({
+      totalCount: result.totalCount,
+      items: result.items.map((item) => ({
+        id: item.id,
+        fullName: item.fullName,
+        description: item.description,
+        ownerAvatarUrl: item.owner.avatarUrl,
+        stargazersCount: formatCount(item.stars),
+        htmlUrl: item.htmlUrl,
+      })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "エラーが発生しました";
+    if (message.includes("レート制限")) {
+      return c.json({ error: message }, 403);
+    }
+    return c.json({ error: message }, 500);
+  }
 });
 
 export default app;
