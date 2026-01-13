@@ -111,7 +111,7 @@ src/
 │   ├── [owner]/[repo]/           # リポジトリ詳細ページ
 │   └── api/
 │       ├── [[...route]]/         # BFFマウントポイント（HonoをNext.jsに接続）
-│       └── infrastructure/       # 外部サービス連携（Clean Architecture）
+│       └── infrastructure/
 │           └── github/
 │               ├── data-access/  # 生API呼び出し（snake_case）
 │               ├── repository/   # 型変換（camelCase）
@@ -320,9 +320,9 @@ src/app/api/[[...route]]/
 Page から BFF を呼び出すための型安全なクライアント層。
 Hono Client を使用し、BFF の型定義から自動的に型付きクライアントを生成します。
 
-#### Infrastructure 層（外部サービス連携）
+#### Infrastructure 層
 
-Clean Architecture の考え方に基づき、外部 API との連携を infrastructure 層に分離しています。
+外部 API との連携を infrastructure 層に分離しています。
 
 ```
 src/app/api/infrastructure/
